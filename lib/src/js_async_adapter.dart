@@ -4,32 +4,44 @@ import 'dart:async';
 
 import 'package:func/func.dart';
 import 'package:js/js.dart';
+import 'package:js/js_util.dart' as js_util;
 
 import 'js_facade/promise.dart';
 
-Stream<T> callbackToStream<J, T>(
-    VoidFunc1<VoidFunc1<J>> setter, Func1<J, T> transformer) {
+Stream<T> callbackToStream<J, T>(object, String name, Func1<J, T> unwrapValue) {
   StreamController<T> controller = new StreamController.broadcast(sync: true);
-  setter(allowInterop((J event) {
-    controller.add(transformer == null ? event : transformer(event));
+  js_util.setProperty(object, name, allowInterop((J event) {
+    controller.add(unwrapValue(event));
   }));
   return controller.stream;
 }
 
-Future<T> promiseToFuture<T>(Promise<T> promise) {
+Future<T> promiseToFuture<J, T>(Promise<J> promise, [Func1<J, T> unwrapValue]) {
   Completer<T> completer = new Completer();
   promise.then(allowInterop((value) {
-    completer.complete(value);
+    T unwrapped = null;
+    if (unwrapValue == null) {
+      unwrapped = value;
+    } else if (value != null) {
+      unwrapped = unwrapValue(value);
+    }
+    completer.complete(unwrapped);
   }), allowInterop((error) {
     completer.completeError(error);
   }));
   return completer.future;
 }
 
-Promise futureToPromise<T>(Future<T> future) {
-  return new Promise(allowInterop((Function resolve, Function reject) {
+Promise<J> futureToPromise<J, T>(Future<T> future, [Func1<T, J> wrapValue]) {
+  return new Promise<J>(allowInterop((VoidFunc1<J> resolve, VoidFunc1 reject) {
     future.then((value) {
-      resolve(value);
+      J wrapped = null;
+      if (wrapValue != null) {
+        wrapped = wrapValue(value);
+      } else if (value != null) {
+        wrapped = value as J;
+      }
+      resolve(wrapValue(value));
     }).catchError((error) {
       reject(error);
     });
