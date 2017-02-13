@@ -17,6 +17,7 @@ Stream<T> callbackToStream<J, T>(object, String name, Func1<J, T> unwrapValue) {
 }
 
 Future<T> promiseToFuture<J, T>(Promise<J> promise, [Func1<J, T> unwrapValue]) {
+  if (promise is Future) return promise as Future;
   Completer<T> completer = new Completer();
   promise.then(allowInterop((value) {
     T unwrapped = null;
@@ -41,7 +42,7 @@ Promise<J> futureToPromise<J, T>(Future<T> future, [Func1<T, J> wrapValue]) {
       } else if (value != null) {
         wrapped = value as J;
       }
-      resolve(wrapValue(value));
+      resolve(wrapped);
     }).catchError((error) {
       reject(error);
     });

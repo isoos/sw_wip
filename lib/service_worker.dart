@@ -1,8 +1,20 @@
 library service_worker;
 
 import 'dart:async';
-import 'dart:html' show Blob, Event, FormData, MessagePort, Worker;
-import 'dart:html';
+import 'dart:html'
+    show
+        Blob,
+        Element,
+        ErrorEvent,
+        Event,
+        Events,
+        EventListener,
+        EventTarget,
+        FormData,
+        MessageEvent,
+        MessagePort,
+        Worker;
+import 'dart:indexed_db';
 import "dart:typed_data" show ByteBuffer;
 
 import 'package:js/js.dart';
@@ -11,12 +23,28 @@ import 'package:js/js_util.dart' as js_util;
 import 'src/js_async_adapter.dart';
 import 'src/js_facade/service_worker_api.dart' as facade;
 
-import 'src/js_facade/service_worker_api.dart' show CacheOptions;
+import 'src/js_facade/service_worker_api.dart'
+    show
+        CacheOptions,
+        PushSubscriptionOptions,
+        ServiceWorkerRegisterOptions,
+        ShowNotificationOptions;
+export 'src/js_facade/service_worker_api.dart'
+    show
+        CacheOptions,
+        PushSubscriptionOptions,
+        ServiceWorkerRegisterOptions,
+        ShowNotificationOptions;
+
+/// API entry point for client apps.
+final ServiceWorkerContainer container =
+    new ServiceWorkerContainer._(facade.serviceWorkerContainer);
+
+/// API entry point for ServiceWorkers.
+final ServiceWorkerGlobalScope globalScope =
+    new ServiceWorkerGlobalScope._(facade.serviceWorkerGlobalScope);
 
 class ServiceWorkerGlobalScope {
-  static ServiceWorkerGlobalScope _instance =
-      new ServiceWorkerGlobalScope._(facade.globalScope);
-
   facade.ServiceWorkerGlobalScope _delegate;
   CacheStorage _caches;
   ServiceWorkerClients _clients;
@@ -30,7 +58,6 @@ class ServiceWorkerGlobalScope {
   Stream<PushEvent> _onPushSubscriptionChange;
 
   ServiceWorkerGlobalScope._(this._delegate);
-  factory ServiceWorkerGlobalScope() => _instance;
 
   /// Contains the CacheStorage object associated with the service worker.
   CacheStorage get caches =>
@@ -110,6 +137,88 @@ class ServiceWorkerGlobalScope {
   Future<Response> fetch(dynamic /*Request|String*/ request) => promiseToFuture(
       _callMethod(_delegate, 'fetch', [_wrapRequest(request)]),
       (j) => new Response._(j));
+
+  /// Returns the indexedDB in the current scope.
+  IdbFactory get indexedDB => _getProperty(_delegate, 'indexedDB');
+}
+
+/// Provides an object representing the service worker as an overall unit in the
+/// network ecosystem, including facilities to register, unregister and update
+/// service workers, and access the state of service workers
+/// and their registrations.
+class ServiceWorkerContainer {
+  Stream<Event> _onControllerChange;
+  Stream<ErrorEvent> _onError;
+  Stream<MessageEvent> _onMessage;
+  facade.ServiceWorkerContainer _delegate;
+
+  ServiceWorkerContainer._(this._delegate);
+
+  /// Returns a ServiceWorker object if its state is activated (the same object
+  /// returned by ServiceWorkerRegistration.active). This property returns null
+  /// if the request is a force refresh (Shift + refresh) or if there is no
+  /// active worker.
+  ServiceWorker get controller {
+    var j = _getProperty(_delegate, 'controller');
+    if (j == null) return null;
+    return new ServiceWorker._(j);
+  }
+
+  /// Defines whether a service worker is ready to control a page or not.
+  /// It returns a Promise that will never reject, which resolves to a
+  /// ServiceWorkerRegistration with an ServiceWorkerRegistration.active worker.
+  Future<ServiceWorkerRegistration> get ready => promiseToFuture(
+      _getProperty(_delegate, 'ready'),
+      (j) => new ServiceWorkerRegistration._(j));
+
+  /// An event handler fired whenever a controllerchange event occurs — when
+  /// the document's associated ServiceWorkerRegistration acquires a new
+  /// ServiceWorkerRegistration.active worker.
+  Stream<Event> get onControllerChange => _onControllerChange ??=
+      callbackToStream(_delegate, 'oncontrollerchange', (j) => j);
+
+  /// An event handler fired whenever an error event occurs in the associated
+  /// service workers.
+  Stream<ErrorEvent> get onError =>
+      _onError ??= callbackToStream(_delegate, 'onerror', (j) => j);
+
+  /// An event handler fired whenever a message event occurs — when incoming
+  /// messages are received to the ServiceWorkerContainer object (e.g. via a
+  /// MessagePort.postMessage() call.)
+  Stream<MessageEvent> get onMessage =>
+      _onMessage ??= callbackToStream(_delegate, 'onmessage', (j) => j);
+
+  /// Creates or updates a ServiceWorkerRegistration for the given scriptURL.
+  /// Currently available options are: scope: A USVString representing a URL
+  /// that defines a service worker's registration scope; what range of URLs a
+  /// service worker can control. This is usually a relative URL, and it
+  /// defaults to '/' when not specified.
+  Future<ServiceWorkerRegistration> register(String scriptURL,
+          [ServiceWorkerRegisterOptions options]) =>
+      promiseToFuture(_callMethod(_delegate, 'register', [scriptURL, options]),
+          (j) => new ServiceWorkerRegistration._(j));
+
+  /// Gets a ServiceWorkerRegistration object whose scope URL matches the
+  /// provided document URL.  If the method can't return a
+  /// ServiceWorkerRegistration, it returns a Promise.
+  /// scope URL of the registration object you want to return. This is usually
+  /// a relative URL.
+  Future<ServiceWorkerRegistration> getRegistration([String scope]) =>
+      promiseToFuture(_callMethod(_delegate, 'getRegistration', [scope]),
+          (j) => new ServiceWorkerRegistration._(j));
+
+  /// Returns all ServiceWorkerRegistrations associated with a
+  /// ServiceWorkerContainer in an array.  If the method can't return
+  /// ServiceWorkerRegistrations, it returns a Promise.
+  Future<List<ServiceWorkerRegistration>> getRegistrations() => promiseToFuture(
+      _callMethod(_delegate, 'getRegistrations', []),
+      (List list) =>
+          list.map((j) => new ServiceWorkerRegistration._(j)).toList());
+
+  void addEventListener<K>(String type, listener(K event), [bool useCapture]) {
+    _callMethod(_delegate, 'addEventListener',
+        [type, allowInterop(listener), useCapture]);
+  }
 }
 
 /// Represents the storage for Cache objects. It provides a master directory of
@@ -249,7 +358,9 @@ class ServiceWorkerClient {
   /// Allows a service worker client to send a message to a ServiceWorker.
   /// to a port.
   void postMessage(dynamic message, [dynamic transfer]) {
-    _callMethod(_delegate, 'postMessage', [message, transfer]);
+    List args = [message];
+    if (transfer != null) args.add(transfer);
+    _callMethod(_delegate, 'postMessage', args);
   }
 
   /// Indicates the type of browsing context of the current client.
@@ -283,6 +394,7 @@ class WindowClient extends ServiceWorkerClient {
 /// Represents a service worker registration.
 class ServiceWorkerRegistration implements EventTarget {
   facade.ServiceWorkerRegistration _delegate;
+  PushManager _pushManager;
   Stream _onUpdateFound;
   ServiceWorkerRegistration._(this._delegate);
 
@@ -310,9 +422,10 @@ class ServiceWorkerRegistration implements EventTarget {
       new ServiceWorker._(_getProperty(_delegate, 'active'));
 
   /// Returns an interface to for managing push subscriptions, including
-  /// subcribing, getting an anctive subscription, and accessing push
+  /// subscribing, getting an active subscription, and accessing push
   /// permission status.
-  PushManager get pushManager => _getProperty(_delegate, 'pushManager');
+  PushManager get pushManager => _pushManager ??=
+      new PushManager._(_getProperty(_delegate, 'pushManager'));
 
   /// An EventListener property called whenever an event of type updatefound
   /// is fired; it is fired any time the ServiceWorkerRegistration.installing
@@ -347,6 +460,56 @@ class ServiceWorkerRegistration implements EventTarget {
   void removeEventListener(String type, EventListener listener,
           [bool useCapture]) =>
       throw new UnimplementedError();
+
+  /// Creates a notification on an active service worker.
+  Future<NotificationEvent> showNotification(String title,
+      [ShowNotificationOptions options]) {
+    List args = [title];
+    if (options != null) args.add(options);
+    return promiseToFuture(_callMethod(_delegate, 'showNotification', args),
+        (j) => new NotificationEvent._(j));
+  }
+}
+
+/// The PushManager interface provides a way to receive notifications from
+/// third-party servers as well as request URLs for push notifications.
+/// This interface has replaced functionality offered by the obsolete
+/// PushRegistrationManager.
+class PushManager {
+  facade.PushManager _delegate;
+  PushManager._(this._delegate);
+
+  /// Returns a promise that resolves to a PushSubscription with details of a
+  /// new push subscription.
+  Future<PushSubscription> subscribe([PushSubscriptionOptions options]) =>
+      promiseToFuture(_callMethod(_delegate, 'subscribe', [options]),
+          (j) => new PushSubscription._(j));
+
+  /// Returns a promise that resolves to a PushSubscription details of
+  /// the retrieved push subscription.
+  Future<PushSubscription> getSubscription() => promiseToFuture(
+      _callMethod(_delegate, 'getSubscription', []),
+      (j) => new PushSubscription._(j));
+
+  /// Returns a promise that resolves to the PushPermissionStatus of the
+  /// requesting webapp, which will be one of granted, denied, or default.
+  Future<String> hasPermission() =>
+      promiseToFuture(_callMethod(_delegate, 'hasPermission', []));
+}
+
+/// The PushSubscription interface provides a subcription's URL endpoint and
+/// subscription ID.
+class PushSubscription {
+  facade.PushSubscription _delegate;
+  PushSubscription._(this._delegate);
+
+  /// The endpoint associated with the push subscription.
+  dynamic get endpoint => _getProperty(_delegate, 'endpoint');
+
+  /// Resolves to a Boolean when the current subscription is successfully
+  /// unsubscribed.
+  Future<bool> unsubscribe() =>
+      promiseToFuture(_callMethod(_delegate, 'unsubscribe', []));
 }
 
 /// Extends the lifetime of the install and activate events dispatched on the
@@ -503,6 +666,8 @@ class InstallEvent extends ExtendableEvent {
 class ServiceWorker implements Worker {
   facade.ServiceWorker _delegate;
   Stream<Event> _onStateChange;
+  Stream<ErrorEvent> _onError;
+  Stream<MessageEvent> _onMessage;
   ServiceWorker._(this._delegate);
 
   /// Returns the ServiceWorker serialized script URL defined as part of
@@ -533,15 +698,24 @@ class ServiceWorker implements Worker {
   @override
   Events get on => _getProperty(_delegate, 'on');
 
+  /// An event handler fired whenever an error event occurs in the associated
+  /// service workers.
   @override
-  Stream<Event> get onError => throw new UnimplementedError();
+  Stream<ErrorEvent> get onError =>
+      _onError ??= callbackToStream(_delegate, 'onerror', (j) => j);
 
+  /// An event handler fired whenever a message event occurs — when incoming
+  /// messages are received to the ServiceWorkerContainer object (e.g. via a
+  /// MessagePort.postMessage() call.)
   @override
-  Stream<MessageEvent> get onMessage => throw new UnimplementedError();
+  Stream<MessageEvent> get onMessage =>
+      _onMessage ??= callbackToStream(_delegate, 'onmessage', (j) => j);
 
   @override
   void postMessage(message, [List<MessagePort> transfer]) {
-    _callMethod(_delegate, 'postMessage', [message, transfer]);
+    List args = [message];
+    if (transfer != null) args.add(transfer);
+    _callMethod(_delegate, 'postMessage', args);
   }
 
   @override

@@ -414,6 +414,109 @@ abstract class NotificationEvent implements ExtendableEvent {
   external set action(String v);
 }
 
+@anonymous
+@JS()
+class ShowNotificationOptions {
+  /// An array of actions to display in the notification. Appropriate responses
+  /// are built using event.action within the notificationclick event.
+  external List<ShowNotificationAction> get actions;
+  external set scope(String v);
+
+  /// The URL of an image to represent the notification when there is not enough
+  /// space to display the notification itself such as, for example, the Android
+  /// Notification Bar. On Android devices, the badge should accommodate devices
+  /// up to 4x resolution, about 96 by 96 px, and the image will be
+  /// automatically masked.
+  external String get badge;
+  external set badge(String v);
+
+  /// A string representing an extra content to display within the notification.
+  external String get body;
+  external set body(String v);
+
+  /// The direction of the notification; it can be auto, ltr, or rtl
+  external String get dir;
+  external set dir(String v);
+
+  /// The URL of an image to be used as an icon by the notification.
+  external String get icon;
+  external set icon(String v);
+
+  /// A USVSTring containing the URL of an image to be displayed in the
+  /// notification.
+  external String get image;
+  external set image(String v);
+
+  /// Specify the lang used within the notification. This string must be a valid
+  /// BCP 47 language tag.
+  external String get lang;
+  external set lang(String v);
+
+  /// A boolean that indicates whether to supress vibrations and audible alerts
+  /// when resusing a tag value. The default is false.
+  external bool get renotify;
+  external set renotify(bool v);
+
+  /// Indicates that on devices with sufficiently large screens, a notification
+  /// should remain active until the user clicks or dismisses it. If this value
+  /// is absent or false, the desktop version of Chrome will auto-minimize
+  /// notifications after approximately twenty seconds.
+  /// The default value is false.
+  external bool get requireInteraction;
+  external set requireInteraction(bool v);
+
+  /// An ID for a given notification that allows you to find, replace, or remove
+  /// the notification using script if necessary.
+  external String get tag;
+  external set tag(String v);
+
+  /// A vibration pattern to run with the display of the notification.
+  /// A vibration pattern can be an array with as few as one member. The values
+  /// are times in milliseconds where the even indices (0, 2, 4, etc.) indicate
+  /// how long to vibrate and the odd indices indicate how long to pause. For
+  /// example [300, 100, 400] would vibrate 300ms, pause 100ms, then vibrate 400ms.
+  external List<int> get vibrate;
+  external set vibrate(List<int> v);
+
+  /// Arbitrary data that you want associated with the notification.
+  /// This can be of any data type.
+  external String get data;
+  external set data(String v);
+
+  external factory ShowNotificationOptions(
+      {List<ShowNotificationAction> actions,
+      String badge,
+      String body,
+      String dir,
+      String icon,
+      String image,
+      String lang,
+      bool renotify,
+      bool requireInteraction,
+      String tag,
+      List<int> vibrate,
+      dynamic data});
+}
+
+@anonymous
+@JS()
+class ShowNotificationAction {
+  /// A DOMString identifying a user action to be displayed on the notification.
+  external String get action;
+  external set action(String v);
+
+  /// A DOMString containing action text to be shown to the user.
+  external String get title;
+  external set title(String v);
+
+  /// A USVString containg the URL of an icon to display with the action.
+  external String get icon;
+  external set icon(String v);
+
+  external factory ShowNotificationAction(
+      {String action, String title, String icon});
+}
+
 /// The PushEvent interface of the Push API represents
 /// a push message that has been received.
 /// This event is sent to the global scope of a ServiceWorker.
@@ -614,7 +717,10 @@ abstract class ServiceWorkerGlobalScope implements EventTarget {
 }
 
 @JS('self')
-external ServiceWorkerGlobalScope get globalScope;
+external ServiceWorkerGlobalScope get serviceWorkerGlobalScope;
+
+@JS('window.navigator.serviceWorker')
+external ServiceWorkerContainer get serviceWorkerContainer;
 
 /* Skipping class Navigator*/
 
