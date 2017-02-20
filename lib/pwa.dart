@@ -1,5 +1,0 @@
-library pwa;
-
-class ProgressiveWebApp {
-
-}

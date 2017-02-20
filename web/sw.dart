@@ -5,7 +5,7 @@ import 'dart:async';
 
 import 'package:js/js.dart';
 
-import 'package:sw_wip/service_worker.dart';
+import 'package:service_worker/service_worker.dart';
 
 @JS('self.console.dir')
 external dir(o);
