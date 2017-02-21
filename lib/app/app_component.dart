@@ -3,6 +3,7 @@ import 'dart:html' show MessageEvent;
 
 import 'package:angular2/core.dart';
 import 'package:service_worker/window.dart' as sw;
+import 'package:sw_wip/pwa_on_pub/client.dart';
 
 @Component(
   selector: 'my-app',
@@ -10,10 +11,14 @@ import 'package:service_worker/window.dart' as sw;
 )
 class AppComponent implements AfterViewInit {
   String log = '';
+  PwaClient pwaClient;
+
+  // AppComponent(this.pwaClient);
 
   @override
   void ngAfterViewInit() {
     _initSw();
+    // _log('ready ${pwaClient}');
   }
 
   void _log(String text) {
@@ -22,13 +27,13 @@ class AppComponent implements AfterViewInit {
 
   Future _initSw() async {
     try {
-      await sw.serviceWorker.register('sw.dart.js');
+      await sw.register('sw.dart.js');
       _log('registered');
 
-      sw.ServiceWorkerRegistration registration = await sw.serviceWorker.ready;
+      sw.ServiceWorkerRegistration registration = await sw.ready;
       _log('ready');
 
-      sw.serviceWorker.onMessage.listen((MessageEvent event) {
+      sw.onMessage.listen((MessageEvent event) {
         _log('message reply received: ${event.data}');
       });
 

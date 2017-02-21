@@ -1,5 +1,5 @@
-/// URLs of the output files in build/web
-final List<String> offlineUrls = [
+/// URLs from build/web
+final List<String> assetUrls = [
   '/',
   '/main.dart.js',
   '/manifest.json',
@@ -229,5 +229,8 @@ final List<String> offlineUrls = [
   '/packages/intl/src/data/dates/symbols/zu.json',
   '/packages/sw_wip/app/app_component.html',
   '/styles.css',
-  '/sw.dart.js',
 ];
+
+/// Last modified timestamp in build/web
+final DateTime assetsLastModified =
+    new DateTime.fromMicrosecondsSinceEpoch(1488215942000, isUtc: true);

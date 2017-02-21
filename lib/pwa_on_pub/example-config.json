@@ -1,0 +1,22 @@
+{
+  "caches": {
+    "offline": {
+      "populateOnFetch": false,
+      "assets": [
+        "/",
+        "/main.dart.js",
+        "/styles.css",
+        "... [all of the files in build/web]"
+      ]
+    },
+    "youtube-images": {
+      "maxEntries": 200,
+      "maxAgeHours": 1,
+      "populateOnFetch": true
+    }
+  },
+  "routes": [
+    {"url": "http://localhost:8080/", "cache": "offline", "fetch": "cacheFirst"},
+    {"url": "https://img.youtube.com/", "cache": "youtube-images", "fetch": "fastest"}
+  ]
+}

@@ -8,6 +8,7 @@ environment:
 dependencies:
   angular2: ^2.2.0
   dart_style: ^0.2.16
+  func: ^0.1.1
   js: ^0.6.1
   service_worker: ^0.0.1
 
@@ -23,3 +24,5 @@ transformers:
     - 'package:angular2/common.dart#COMMON_PIPES'
     entry_points: web/main.dart
 - dart_to_js_script_rewriter
+- $dart2js:
+    minify: false
